@@ -33,7 +33,9 @@ class Application extends BaseApplication
         $kernel->boot();
         if ($kernel->getContainer()->getParameter('jms_job_queue.statistics')) {
             $this->insertStatStmt = "INSERT INTO jms_job_statistics (job_id, characteristic, createdAt, charValue) VALUES (:jobId, :name, :createdAt, :value)";
-            register_tick_function(array($this, 'onTick'));
+            if (function_exists('register_tick_function')) {
+                register_tick_function(array($this, 'onTick'));
+            }
         }
     }
 
