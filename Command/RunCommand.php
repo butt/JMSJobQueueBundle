@@ -54,6 +54,9 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
     /** @var array */
     private $runningJobs = array();
 
+    private $executors = ['php', 'hhvm'];
+    private $executor = ['php'];
+    
     protected function configure()
     {
         $this
@@ -62,6 +65,7 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
             ->addOption('max-runtime', 'r', InputOption::VALUE_REQUIRED, 'The maximum runtime in seconds.', 900)
             ->addOption('max-concurrent-jobs', 'j', InputOption::VALUE_REQUIRED, 'The maximum number of concurrent jobs.', 4)
             ->addOption('idle-time', null, InputOption::VALUE_REQUIRED, 'Time to sleep when the queue ran out of jobs.', 2)
+            ->addOption('executor', null, InputOption::VALUE_OPTIONAL, 'executor of command php|hhvm', 'php')
         ;
     }
 
@@ -82,6 +86,13 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
         $idleTime = (integer) $input->getOption('idle-time');
         if ($idleTime <= 0) {
             throw new InvalidArgumentException('Time to sleep when idling must be greater than zero.');
+        }
+
+        $executor = $input->getOption('executor');
+        if (empty($executor) || !in_array($executor, $this->executors)) {
+            throw new InvalidArgumentException('Executor for command php or hhvm');
+        } else {
+            $this->executor = $executor;
         }
 
         $this->env = $input->getOption('env');
@@ -349,7 +360,15 @@ class RunCommand extends \Symfony\Bundle\FrameworkBundle\Command\ContainerAwareC
         }
 
         $pb
-            ->add('php')
+            ->add($this->executor)
+        ;
+        if ($this->executor == 'hhvm') {
+            $pb
+                ->add('-v')
+                ->add('Eval.Jit=0')
+            ;
+        }
+        $pb                
             ->add($this->getContainer()->getParameter('kernel.root_dir').'/console')
             ->add('--env='.$this->env)
         ;
